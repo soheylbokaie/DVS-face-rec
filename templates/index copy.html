@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Webcam Streaming</title>
+</head>
+
+<body>
+    <h1>Webcam Streaming</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <script>
+        const video = document.getElementById('video');
+        const ws = new WebSocket('ws://localhost:5000/');
+
+        // Request user permission to access the camera
+        navigator.mediaDevices.getUserMedia({
+                video: true
+            })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(error => {
+                console.error('Error accessing the camera:', error);
+            });
+
+        // Function to capture and send video frames to the server
+        function captureAndSend() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.width;
+            canvas.height = video.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const image = canvas.toDataURL('image/jpeg');
+            ws.send(image);
+
+
+            // Call the function recursively to continuously capture and send frames
+            requestAnimationFrame(captureAndSend);
+        }
+
+        // Start capturing and sending frames when the video is playing
+        video.onplay = () => {
+            captureAndSend();
+        };
+    </script>
+</body>
+
+</html>
