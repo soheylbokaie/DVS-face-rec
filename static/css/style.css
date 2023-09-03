@@ -2,6 +2,8 @@
     width: 50%;
     height: 50vh;
     margin: 10rem auto;
+    background-color: red;
+    text-align: center;
 }
 
 #video {
@@ -12,4 +14,22 @@
 html,
 body {
     margin: 0;
+}
+
+.video {
+    height: 50vh;
+    margin: 0 auto;
+}
+
+#gif-overlay {
+    width: 100%;
+    background-color: transparent;
+    margin-top: -25vh;
+    text-align: center;
+    height: 20vh;
+    display: none;
+}
+
+#gif-overlay-img {
+    height: 20vh;
 }

@@ -9,7 +9,13 @@
 </head>
 
 <body>
-
+    <div class="video-container">
+        <video class="video" autoplay id="sign-up-video"></video>
+        <div id="gif-overlay">
+            <img id="gif-overlay-img" src="{{ url_for('static', filename='imgs/Orange_animated_right_arrow.gif') }}" alt="Hovering GIF">
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/signup.js') }}"></script>
 </body>
 
 </html>
