@@ -1,15 +1,18 @@
 document.addEventListener("DOMContentLoaded", function() {
     // Get the video element
     const video = document.getElementById("video");
+    const direction = document.getElementById("direction");
 
     // Check if the browser supports getUserMedia
     var socket = io.connect("https://" + document.domain + ":" + location.port);
     socket.connect();
     const imgElement = document.getElementById("image-element");
     socket.on("data", function(data) {
-        imgElement.src = 'data:image/png;base64, ' + data
-        console.log(data);
-
+        if ('img' in data){
+        imgElement.src = 'data:image/png;base64, ' + data.img
+        direction.innerText = data.direction
+        }
+        // console.log(Object.keys(data));
 
     });
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
