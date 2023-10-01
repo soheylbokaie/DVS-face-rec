@@ -3,56 +3,59 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 import os 
+import dlib
 
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt.xml')
+import xgboost as xgb
+from sklearn.preprocessing import LabelEncoder
+# Initialize the classifier with conservative hyperparameters
+model = xgb.XGBClassifier(
+    n_estimators=100,
+    max_depth=100,
+    learning_rate=0.1,
+    reg_lambda=0.1,
+    reg_alpha=0.0,
+)
 
-# Load and preprocess images
-def preprocess_image(target_size=(100, 100)):
-    faces_l = []
-    labels = []
-    image_folder = './static/imgs/'  # Replace with the path to your training image folder
-    
-    image_paths = [os.path.join(image_folder, file) for file in os.listdir(image_folder) if file.endswith('.jpg')]
-    for imagep in image_paths :    
-        image = cv2.imread(imagep, cv2.IMREAD_GRAYSCALE)
-        faces = face_cascade.detectMultiScale(image,1.7,1)
+
+faces = []
+labels = []
+people = os.listdir('./face/')
+for person in people:
+    pics = os.listdir('./face/'+person)
+    for direction in pics:
+        # print('./face/'+person+'/'+ direction)
+        gray_image = cv2.imread('./face/'+person+'/'+ direction,cv2.IMREAD_GRAYSCALE)
+        gray_image = cv2.resize(gray_image,(100,100))
+        gray_image = gray_image.flatten()
+        faces.append(gray_image)
+        labels.append(person)
         
-        for (x, y, w, h) in faces:
-            face = image[ y:y+h,x:x+w]
-            face = cv2.resize(face, target_size)
-            face = face.flatten()  # Flatten to 1D array
-            faces_l.append(face)
-            labels.append(''.join(imagep.split('/')[-1].split('.')[0]))
-    return faces_l,labels
-
-# Load and preprocess your dataset
-# Create lists to store images and corresponding labels
 
 
-# Add images and labels to the lists
-# For example:
-# images.append(preprocess_image('path_to_image.jpg'))
-# labels.append('person_name')
 
-images,labels = preprocess_image()
-# Convert lists to numpy arrays
-X = images
-y = labels
-print(y)
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Train a k-NN classifier
-print(X_train)
-k = 3  # Number of neighbors
-knn_classifier = KNeighborsClassifier(n_neighbors=1)
-knn_classifier.fit(X, y)
 
-# Evaluate the classifier
-# accuracy = knn_classifier.score(X_test, y_test)
-print("Accuracy:")
-import joblib
+X_train = faces
+label_encoder = LabelEncoder()
+y_train = label_encoder.fit_transform(labels)
 
-# Assuming you've trained the k-NN classifier and stored it in the variable knn_classifier
-model_filename = 'knn_model.pkl'
-joblib.dump(knn_classifier, model_filename)
+
+
+my_dict = {'hassan': 0, 'soheyl': 1}
+
+print(y_train)
+# Train the model
+# print(X_train[0])
+
+
+model.fit(X_train, y_train)
+
+gray_image = cv2.imread('./front.jpg' ,cv2.IMREAD_GRAYSCALE)
+gray_image = cv2.resize(gray_image,(100,100))
+gray_image = gray_image.flatten()
+
+
+
+
+print(model.predict([gray_image]))
+

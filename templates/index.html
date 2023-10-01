@@ -5,15 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket Client</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 
 <body>
     <h1>WebSocket Client</h1>
-    <video id="video" autoplay></video>
+    <div class="video-container">
+        <video class="video" autoplay id="video"></video>
+        <div id="gif-overlay">
+            <img id="gif-overlay-img" src="{{ url_for('static', filename='imgs/Orange_animated_right_arrow.gif') }}" alt="Hovering GIF">
+        </div>
+    </div>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <img id="image-element" src="{{ url_for('static', filename='1.jpg') }}" alt="Image">
     <p id="direction">f</p>
+    <input type="text" name="name" id="name" value="soheyl">
+    <button onclick="up()">right</button>
 </body>
 
 </html>

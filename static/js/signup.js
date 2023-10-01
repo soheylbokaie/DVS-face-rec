@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function() {
 function right() {
     const gif = document.getElementById("gif-overlay");
     if (gif.style.display == 'none' || gif.style.transform == "scaleX(-1)") {
-        gif.style.transform = "scaleX(1)";
+        gif.style.transform = "scaleX(-1)";
         gif.style.display = "block";
     } else {
         gif.style.display = "none";
