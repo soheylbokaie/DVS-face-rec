@@ -13,10 +13,11 @@ import dlib
 import jwt
 import json
 import requests
-
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 import psycopg2
 import face_recognition
-
+import os
 
 
 
@@ -31,6 +32,35 @@ cursor = conn.cursor()
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+import hashlib
+from dotenv import load_dotenv
+
+class AES:
+
+    def __init__(self):
+        load_dotenv()
+        key = hashlib.sha512(os.getenv("AES_KEY").encode()).digest()[:32]
+        self.key = key
+        self.algorithm = algorithms.AES(key)
+        iv = hashlib.sha512(os.getenv("IV_KEY").encode()).digest()[:16]
+        self.iv = iv
+
+    def encrypt(self, txt):
+        cipher = Cipher(self.algorithm, modes.CFB(self.iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        encrypted = encryptor.update(txt.encode()) + encryptor.finalize()
+        return encrypted.hex()
+
+    def decrypt(self, txt):
+        cipher = Cipher(self.algorithm, modes.CFB(self.iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        decrypted = decryptor.update(bytes.fromhex(txt)) + decryptor.finalize()
+        return decrypted.decode('utf-8')
+
 
 #print(cv2.data.haarcascades + 'haarcascade_mcs_nose.xml')
 app = Flask(__name__)
@@ -75,8 +105,31 @@ def save_pic():
     cursor.execute("INSERT INTO face_encodings (user_id, encoding) VALUES (%s, %s)", (data['user_id'], face_encoding[0].tobytes()))
     conn.commit()
     return {'status':"True"}
-    # except:
-        # return {'status':"False"}
+
+
+@app.route('/verf',methods=['POST'])
+def verfPicture():
+    global cursor
+    global conn
+    # try:
+    data = request.get_json()
+    election_id = data['election_id']
+    decoded_data = base64.b64decode(data['image'])
+    image_array = np.frombuffer(decoded_data, np.uint8)
+    cv2_image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    face_encoding = face_recognition.face_encodings(cv2_image)[0]
+    cursor.execute(f"select * from face_encodings where user_id = {data['user_id']} ")
+    rows = cursor.fetchone()
+    
+    face_to_check  = np.frombuffer(bytes(rows[1]), dtype=np.float64)
+
+    results = face_recognition.compare_faces([face_to_check], face_encoding)[0]
+    aes = AES()
+    text_to_encrypt = f"{data['user_id']} {election_id} {results}"
+    encrypted_text = aes.encrypt(text_to_encrypt)
+    return {"token": str(encrypted_text)}
+
+
 
 @socketio.on('connect')
 def handle_connect():
