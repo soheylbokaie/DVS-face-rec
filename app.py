@@ -33,34 +33,19 @@ cursor = conn.cursor()
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-import os
 import hashlib
-from dotenv import load_dotenv
 
-class AES:
+def sha256_hash(message):
+    # Create a new SHA-256 hash object
+    sha256 = hashlib.sha256()
 
-    def __init__(self):
-        load_dotenv()
-        key = hashlib.sha512(os.getenv("AES_KEY").encode()).digest()[:32]
-        self.key = key
-        self.algorithm = algorithms.AES(key)
-        iv = hashlib.sha512(os.getenv("IV_KEY").encode()).digest()[:16]
-        self.iv = iv
+    # Update the hash object with the bytes of the message
+    sha256.update(message.encode('utf-8'))
 
-    def encrypt(self, txt):
-        cipher = Cipher(self.algorithm, modes.CFB(self.iv), backend=default_backend())
-        encryptor = cipher.encryptor()
-        encrypted = encryptor.update(txt.encode()) + encryptor.finalize()
-        return encrypted.hex()
+    # Get the hexadecimal representation of the hash
+    hashed_message = sha256.hexdigest()
 
-    def decrypt(self, txt):
-        cipher = Cipher(self.algorithm, modes.CFB(self.iv), backend=default_backend())
-        decryptor = cipher.decryptor()
-        decrypted = decryptor.update(bytes.fromhex(txt)) + decryptor.finalize()
-        return decrypted.decode('utf-8')
-
+    return hashed_message
 
 #print(cv2.data.haarcascades + 'haarcascade_mcs_nose.xml')
 app = Flask(__name__)
@@ -124,10 +109,10 @@ def verfPicture():
     face_to_check  = np.frombuffer(bytes(rows[1]), dtype=np.float64)
 
     results = face_recognition.compare_faces([face_to_check], face_encoding)[0]
-    aes = AES()
     text_to_encrypt = f"{data['user_id']} {election_id} {results}"
-    encrypted_text = aes.encrypt(text_to_encrypt)
-    return {"token": str(encrypted_text)}
+    encrypted_text = sha256_hash(text_to_encrypt)
+    print(encrypted_text)
+    return {"hash": str(encrypted_text)}
 
 
 
