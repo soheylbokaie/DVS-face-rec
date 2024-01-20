@@ -10,17 +10,31 @@ import joblib
 import base64
 import pandas as pd
 import dlib
+import jwt
+import json
+import requests
 
-# face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt.xml')
-# eyes_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-# nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_mcs_nose.xml')
+import psycopg2
+import face_recognition
+
+
+
+
+conn = psycopg2.connect(
+    database="face_rec",
+    user="root",
+    password="1",
+    host="127.0.0.1",
+    port="5432"
+)
+cursor = conn.cursor()
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
 
 #print(cv2.data.haarcascades + 'haarcascade_mcs_nose.xml')
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = '7Uqpfps3M6EfTl5QxnsYtFRDQQAgcU42iI7H5eHAcOWHlhoyf1DhRFUeltfiXbQWsyQ9Sl5YVJbe2SdgDdO5qiPDT7b1S8rQ0'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 socketio = SocketIO(app,cors_allowed_origins="*")
 CORS(app,cors_allowed_origins="*")  
@@ -33,8 +47,36 @@ def index():
 
 @app.route('/signup')
 def signup():
-    return render_template('teacher.html')
+    return "render_template('teacher.html')"
 
+@app.route('/generate_token',methods=['POST'])
+def ss():
+        data = request.get_json()
+        data['user_to_enc']['face_id_verified'] = True
+        token = jwt.encode(data, app.config['SECRET_KEY'], algorithm='HS256')
+        url = 'http://172.20.10.5:8080/users/verify-face-signup'
+        to_send = {"token":token}
+        response = requests.post(url, json=to_send)
+
+        return {'token':token}
+    
+
+@app.route('/save_pic',methods=['POST'])
+def save_pic():
+    global cursor
+    global conn
+    # try:
+    data = request.get_json()
+    decoded_data = base64.b64decode(data['image'])
+    image_array = np.frombuffer(decoded_data, np.uint8)
+    cv2_image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    face_encoding = face_recognition.face_encodings(cv2_image)
+    
+    cursor.execute("INSERT INTO face_encodings (user_id, encoding) VALUES (%s, %s)", (data['user_id'], face_encoding[0].tobytes()))
+    conn.commit()
+    return {'status':"True"}
+    # except:
+        # return {'status':"False"}
 
 @socketio.on('connect')
 def handle_connect():
@@ -54,7 +96,7 @@ model_points = np.array([
 ])
 
 
-def process_image(image,session_id,name=None):
+def process_image(image,session_id,state,name=None):
     image_array = np.frombuffer(image, np.uint8)
     cv2_image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     
@@ -71,7 +113,7 @@ def process_image(image,session_id,name=None):
 
 
     faces = detector(gray)
-    direction = "front"
+    direction = "Front"
  
     if len(faces) > 0 :
         face = faces[0]
@@ -109,28 +151,26 @@ def process_image(image,session_id,name=None):
 
 
         if abs(p2[0] - p1[0] ) > (size[0]/3) and (p2[0] < p1[0]):
-            direction = 'right'
-            cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
+            direction = 'Right'
+            # cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
 
         elif abs(p2[0] - p1[0] ) > (size[0]/3) and (p2[0] > p1[0]):
-            direction = 'left'
-            cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
+            direction = 'Left'
+            # cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
 
-        elif abs(p2[1] - p1[1] ) > (size[1]/5) and (p2[1] < p1[1]):
-            direction = 'up'
-            cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
-        else:
-            cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
 
+            
+            # cv2.imwrite('./face/'+direction+'.jpg',face_for_teaching)
+# 
 
     _, buffer = cv2.imencode('.jpg', cv2_image)
     encoded_image = base64.b64encode(buffer).decode('utf-8')
 
     
-    
-    
-    socketio.emit('data',{'img':encoded_image,"direction":direction
-                          },room=session_id)
+    data_to_emit = {"direction":direction}
+    if state == 6:
+        data_to_emit['image'] = encoded_image
+    socketio.emit('data',data_to_emit,room=session_id)
     
 
 def teach(name,face):
@@ -166,9 +206,11 @@ def predict(face):
 @socketio.on('get_image')
 def handle_custom_event(data):
     session_id = request.sid
-    process_image(base64.b64decode(data['img'].split(',')[1]),session_id,name=data['name'])
+    process_image(base64.b64decode(data['img'].split(',')[1]),session_id,name=data['name'],state=data['state'])
 
 if __name__ == '__main__':
-    socketio.run(app,ssl_context=('./cert.pem', './key.pem'),host='0.0.0.0')
+    socketio.run(app,ssl_context=('../face_rec/cert.pem', '../face_rec/key.pem'),host='0.0.0.0')
     # socketio.run(app)
 
+cursor.close()
+conn.close()
